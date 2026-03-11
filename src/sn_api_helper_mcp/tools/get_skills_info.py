@@ -299,7 +299,7 @@ def bind(mcp: Any) -> None:
                     content_type=effective_type,
                 )
 
-                formatted_content = format_search_results(hits)
+                formatted_content = format_search_results(hits, query=query)
                 sources = [hit.get("_source", {}).get("path", "unknown") for hit in hits]
 
                 result = SignNowApiInfo(
