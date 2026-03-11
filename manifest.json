@@ -9,7 +9,12 @@
   },
   "server": {
     "type": "uv",
-    "entry_point": "src/sn_api_helper_mcp/mcpb_serve.py"
+    "entry_point": "src/sn_api_helper_mcp/mcpb_serve.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "python", "src/sn_api_helper_mcp/mcpb_serve.py"],
+      "env": {}
+    }
   },
   "tools": [
     {
