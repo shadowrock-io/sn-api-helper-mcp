@@ -1,0 +1,75 @@
+name: MCP Spec Validation & Lint
+
+on:
+  push:
+    branches: ["dev/**"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Ruff check
+        run: ruff check src/ scripts/ tests/
+
+      - name: Ruff format check
+        run: ruff format --check src/ scripts/ tests/
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  mcp-validate:
+    name: MCP Spec Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Run MCP spec validation
+        run: python scripts/validate_mcp_spec.py --report MCP_SPEC_COVERAGE.md
+
+      - name: Show coverage report
+        run: cat MCP_SPEC_COVERAGE.md
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcp-spec-coverage
+          path: MCP_SPEC_COVERAGE.md
