@@ -1,12 +1,23 @@
 {
   "manifest_version": "0.4",
   "name": "sn-api-helper-mcp",
-  "display_name": "SignNow API Helper",
+  "display_name": "SignNow API by ShadowRock",
   "version": "1.0.0",
-  "description": "MCP server for SignNow API documentation, code examples, and integration guidance for AI agents.",
+  "description": "MCP server for SignNow API documentation, code examples, and integration guidance for AI agents. Built by ShadowRock.",
   "author": {
-    "name": "SignNow"
+    "name": "ShadowRock"
   },
+  "icon": "assets/icons/icon-128.png",
+  "icons": [
+    {
+      "src": "assets/icons/icon-64.png",
+      "size": "64x64"
+    },
+    {
+      "src": "assets/icons/icon-128.png",
+      "size": "128x128"
+    }
+  ],
   "server": {
     "type": "uv",
     "entry_point": "src/sn_api_helper_mcp/mcpb_serve.py",
