@@ -23,7 +23,7 @@
     "entry_point": "src/sn_api_helper_mcp/mcpb_serve.py",
     "mcp_config": {
       "command": "uv",
-      "args": ["run", "python", "src/sn_api_helper_mcp/mcpb_serve.py"],
+      "args": ["run", "python", "-m", "sn_api_helper_mcp.mcpb_serve"],
       "env": {}
     }
   },
