@@ -20,9 +20,17 @@ The SignNow API Helper MCP server is a Model Context Protocol server designed to
 
 ---
 
-## Installation
+## Quick Install (Claude Desktop Extension)
 
-To install locally for development:
+Download the latest `.mcpb` file from [GitHub Releases](https://github.com/signnow/sn-api-helper-mcp/releases) and open it with Claude Desktop. The extension installs automatically — no Python or manual configuration required.
+
+## Install via pip/uvx
+
+```bash
+pip install sn-api-helper-mcp
+```
+
+Or install locally for development:
 
 ```bash
 pip install -e ".[dev]"

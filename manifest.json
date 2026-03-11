@@ -1,0 +1,28 @@
+{
+  "manifest_version": "0.4",
+  "name": "sn-api-helper-mcp",
+  "display_name": "SignNow API Helper",
+  "version": "1.0.0",
+  "description": "MCP server for SignNow API documentation, code examples, and integration guidance for AI agents.",
+  "author": {
+    "name": "SignNow"
+  },
+  "server": {
+    "type": "uv",
+    "entry_point": "src/sn_api_helper_mcp/mcpb_serve.py"
+  },
+  "tools": [
+    {
+      "name": "get_signnow_api_info",
+      "description": "Query SignNow API documentation for endpoint details, parameters, code examples, and error handling guidance."
+    }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "keywords": ["signnow", "api", "e-signature", "documentation", "mcp"],
+  "license": "MIT"
+}

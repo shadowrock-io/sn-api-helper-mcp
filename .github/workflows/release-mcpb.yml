@@ -1,0 +1,82 @@
+name: Build MCPB Desktop Extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  build-mcpb:
+    name: Build & Validate MCPB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Validate manifest.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const manifest = JSON.parse(fs.readFileSync('manifest.json', 'utf8'));
+
+          const required = ['manifest_version', 'name', 'display_name', 'version', 'description', 'server'];
+          const missing = required.filter(k => !manifest[k]);
+          if (missing.length) {
+            console.error('Missing required fields:', missing.join(', '));
+            process.exit(1);
+          }
+
+          if (manifest.manifest_version !== '0.4') {
+            console.error('Expected manifest_version 0.4, got:', manifest.manifest_version);
+            process.exit(1);
+          }
+
+          if (!manifest.server.type || !manifest.server.entry_point) {
+            console.error('Server must have type and entry_point');
+            process.exit(1);
+          }
+
+          if (!fs.existsSync(manifest.server.entry_point)) {
+            console.error('Entry point not found:', manifest.server.entry_point);
+            process.exit(1);
+          }
+
+          console.log('Manifest validation passed');
+          console.log('  Name:', manifest.display_name);
+          console.log('  Version:', manifest.version);
+          console.log('  Server type:', manifest.server.type);
+          console.log('  Entry point:', manifest.server.entry_point);
+          "
+
+      - name: Build MCPB bundle
+        run: npx @anthropic-ai/mcpb pack
+
+      - name: Verify bundle was created
+        run: |
+          MCPB_FILE=$(ls *.mcpb 2>/dev/null || true)
+          if [ -z "$MCPB_FILE" ]; then
+            echo "No .mcpb file found after build"
+            exit 1
+          fi
+          echo "Built: $MCPB_FILE ($(du -h "$MCPB_FILE" | cut -f1))"
+          echo "MCPB_FILE=$MCPB_FILE" >> "$GITHUB_ENV"
+
+      - name: Upload MCPB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcpb-desktop-extension
+          path: "*.mcpb"
+
+      - name: Attach MCPB to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.mcpb"
