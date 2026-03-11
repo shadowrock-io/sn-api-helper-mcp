@@ -1,10 +1,21 @@
 # SignNow API Helper MCP
+
 [![PyPI](https://img.shields.io/pypi/v/sn-api-helper-mcp)](https://pypi.org/project/sn-api-helper-mcp/)
 [![License](https://img.shields.io/github/license/signnow/sn-api-helper-mcp)](https://github.com/signnow/sn-api-helper-mcp/blob/main/LICENSE.md)
 
-An MCP server for SignNow API helper tools, resources, and prompts.
+A modernized MCP server for SignNow API documentation, code examples, and integration guidance for AI agents. Built and maintained by [ShadowRock](https://github.com/shadowrock-io), originally forked from [signnow/sn-api-helper-mcp](https://github.com/signnow/sn-api-helper-mcp).
 
 mcp-name: io.github.signnow/sn-api-helper-mcp
+
+---
+
+## Install for Claude Desktop
+
+[![Install Claude Desktop Extension](https://img.shields.io/badge/Install-Claude_Desktop_Extension-blue?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTIxIDE1djRhMiAyIDAgMCAxLTIgMkg1YTIgMiAwIDAgMS0yLTJ2LTQiLz48cG9seWxpbmUgcG9pbnRzPSI3IDEwIDEyIDE1IDE3IDEwIi8+PGxpbmUgeDE9IjEyIiB5MT0iMTUiIHgyPSIxMiIgeTI9IjMiLz48L3N2Zz4=)](https://github.com/shadowrock-io/sn-api-helper-mcp/releases/latest)
+
+Download the `.mcpb` file from the latest release and open it with Claude Desktop. The extension installs automatically — no Python or manual configuration required.
+
+---
 
 ## Purpose & Capabilities
 
@@ -19,10 +30,6 @@ The SignNow API Helper MCP server is a Model Context Protocol server designed to
 - **Error Resolution:** Error code reference and debugging prompts for common API issues.
 
 ---
-
-## Quick Install (Claude Desktop Extension)
-
-Download the latest `.mcpb` file from [GitHub Releases](https://github.com/signnow/sn-api-helper-mcp/releases) and open it with Claude Desktop. The extension installs automatically — no Python or manual configuration required.
 
 ## Install via pip/uvx
 
@@ -67,7 +74,9 @@ uvx sn-api-helper-mcp
 
 You can use this server with any MCP client. Below are configurations for popular IDEs and apps.
 
-### Claude Desktop
+### Claude Desktop (Manual)
+
+If you prefer manual configuration over the one-click extension install above:
 
 1. Open your config file:
     - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
