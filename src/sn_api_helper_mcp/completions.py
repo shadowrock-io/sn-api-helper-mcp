@@ -44,6 +44,8 @@ _GUIDE_TOPICS = [
     "branding",
 ]
 
+_MAX_RESULTS_VALUES = ["1", "2", "3", "5", "10"]
+
 
 def _filter_values(values: list[str], partial: str) -> list[str]:
     """Filter values by partial prefix match."""
@@ -80,5 +82,8 @@ def register_completions(mcp: Any) -> None:
 
         if name == "query":
             return Completion(values=_filter_values(_COMMON_QUERIES, partial))
+
+        if name == "max_results":
+            return Completion(values=_filter_values(_MAX_RESULTS_VALUES, partial))
 
         return None

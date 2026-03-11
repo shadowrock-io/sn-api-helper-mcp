@@ -1,7 +1,13 @@
-"""SignNow API information tool — async, structured output, cached."""
+"""SignNow API information tool — async, structured output, cached.
+
+Queries the upstream Elasticsearch-backed documentation API and returns
+the most relevant results with per-document budgets and overall hard caps
+to protect agent context windows.
+"""
 
 from __future__ import annotations
 
+import logging
 from typing import Annotated, Any
 
 import httpx
@@ -9,11 +15,15 @@ from mcp.server.fastmcp import Context
 from pydantic import BaseModel, Field
 
 from ..cache import TTLCache
-from ..response_formatter import format_response
+from ..response_formatter import format_search_results
 
 _API_URL = "https://integrations-copilot.signnow.com/api/skills/getInfo"
 _TIMEOUT = 30.0
 _MAX_RETRIES = 2
+_DEFAULT_MAX_RESULTS = 3
+_MIN_SCORE_RATIO = 0.5
+
+_log = logging.getLogger(__name__)
 
 _cache = TTLCache(ttl_seconds=900.0)
 _http_client: httpx.AsyncClient | None = None
@@ -30,20 +40,69 @@ def _get_client() -> httpx.AsyncClient:
 
 
 class SignNowApiInfo(BaseModel):
-    """Structured response from the SignNow API helper."""
+    """Structured response from the SignNow API documentation search."""
 
     query: str = Field(description="The original search query")
-    content: str = Field(description="Formatted API documentation content")
-    source: str = Field(default="SignNow API Documentation", description="Information source")
+    content: str = Field(description="Formatted API documentation content (markdown)")
+    result_count: int = Field(description="Number of documentation sections returned")
+    total_available: int = Field(description="Total matching documents in the knowledge base")
+    sources: list[str] = Field(description="Source paths of included documentation sections")
+    source: str = Field(
+        default="SignNow API Documentation",
+        description="Information source identifier",
+    )
 
 
-class SignNowApiError(BaseModel):
-    """Structured error response."""
+def _extract_top_hits(
+    data: dict[str, Any],
+    *,
+    max_results: int,
+) -> tuple[list[dict[str, Any]], int]:
+    """Extract and filter the most relevant hits from an Elasticsearch response.
 
-    query: str = Field(description="The original search query")
-    error: str = Field(description="Error description")
-    status_code: int | None = Field(default=None, description="HTTP status code if applicable")
-    suggestion: str = Field(description="Suggested next step for the agent")
+    Applies a minimum relevance score threshold: hits scoring below 50% of the
+    top hit's score are excluded to avoid tangential results.
+
+    Returns:
+        Tuple of (filtered hits list, total available count).
+    """
+    hits_wrapper = data.get("hits", data)
+
+    if isinstance(hits_wrapper, dict):
+        hit_list = hits_wrapper.get("hits", [])
+        total_raw = hits_wrapper.get("total", {})
+        total_available = (
+            total_raw.get("value", len(hit_list))
+            if isinstance(total_raw, dict)
+            else int(total_raw)
+            if total_raw
+            else len(hit_list)
+        )
+    elif isinstance(hits_wrapper, list):
+        hit_list = hits_wrapper
+        total_available = len(hit_list)
+    else:
+        return [], 0
+
+    if not hit_list:
+        return [], total_available
+
+    top_score = hit_list[0].get("_score", 1.0) if hit_list else 1.0
+    threshold = top_score * _MIN_SCORE_RATIO if top_score else 0
+
+    filtered: list[dict[str, Any]] = []
+    for hit in hit_list:
+        if len(filtered) >= max_results:
+            break
+        score = hit.get("_score", 0)
+        if score is not None and score >= threshold:
+            filtered.append(hit)
+
+    return filtered, total_available
+
+
+def _cache_key(query: str, max_results: int) -> str:
+    return f"{query.strip().lower()}::max={max_results}"
 
 
 def bind(mcp: Any) -> None:
@@ -51,7 +110,12 @@ def bind(mcp: Any) -> None:
         name="get_signnow_api_info",
         description=(
             "Get information about SignNow API. This is documentation for API usage. "
-            "Returns endpoint details, parameters, code examples, and error handling guidance."
+            "Use specific queries like 'OAuth2 token endpoint', 'embedded signing invite', "
+            "'document field invite', or 'download signed PDF' rather than broad topics "
+            "like 'authentication' or 'signing'. Returns the top matching documentation "
+            "sections with endpoint details, parameters, code examples, and error handling "
+            "guidance. Adjust max_results (1-5) to control breadth: use 1 for focused "
+            "answers, 3 (default) for standard lookups, 5 when exploring broadly."
         ),
         annotations={
             "readOnlyHint": True,
@@ -65,24 +129,37 @@ def bind(mcp: Any) -> None:
         query: Annotated[
             str,
             Field(
-                description="Query string to search for API information (e.g., 'free form invite')",
+                description=(
+                    "Query string to search for API information (e.g., 'free form invite')"
+                ),
             ),
         ],
+        max_results: Annotated[
+            int,
+            Field(
+                default=_DEFAULT_MAX_RESULTS,
+                ge=1,
+                le=10,
+                description=(
+                    "Maximum number of documentation sections to return (1-10). "
+                    "Use 1 for focused answers, 3 for standard lookups, "
+                    "5+ when exploring a topic broadly."
+                ),
+            ),
+        ] = _DEFAULT_MAX_RESULTS,
     ) -> SignNowApiInfo:
         """Query the SignNow API documentation endpoint.
 
-        Args:
-            query: Search query for API information.
-
-        Returns:
-            Structured response with formatted documentation content.
+        Searches the SignNow knowledge base and returns the most relevant
+        documentation sections, filtered by relevance score, with per-document
+        character budgets and an overall hard cap for context-efficient responses.
         """
-        normalized_query = query.strip().lower()
+        key = _cache_key(query, max_results)
 
-        cached = _cache.get(normalized_query)
+        cached = _cache.get(key)
         if cached is not None:
             await ctx.info(f"Cache hit for query: {query}")
-            return SignNowApiInfo(query=query, content=cached)
+            return cached
 
         await ctx.info(f"Querying SignNow API docs: {query}")
 
@@ -96,12 +173,22 @@ def bind(mcp: Any) -> None:
                 )
                 response.raise_for_status()
 
-                raw_text = response.text
-                formatted = format_response(raw_text)
+                data = response.json()
+                hits, total_available = _extract_top_hits(data, max_results=max_results)
 
-                _cache.set(normalized_query, formatted)
+                formatted_content = format_search_results(hits)
+                sources = [hit.get("_source", {}).get("path", "unknown") for hit in hits]
 
-                return SignNowApiInfo(query=query, content=formatted)
+                result = SignNowApiInfo(
+                    query=query,
+                    content=formatted_content,
+                    result_count=len(hits),
+                    total_available=total_available,
+                    sources=sources,
+                )
+
+                _cache.set(key, result)
+                return result
 
             except httpx.HTTPStatusError as exc:
                 last_error = exc
@@ -114,7 +201,10 @@ def bind(mcp: Any) -> None:
                 await ctx.error(f"HTTP error {status} querying SignNow API")
                 return SignNowApiInfo(
                     query=query,
-                    content=f"Error: HTTP {status} from SignNow API. {exc.response.text[:200]}",
+                    content=(f"Error: HTTP {status} from SignNow API. {exc.response.text[:200]}"),
+                    result_count=0,
+                    total_available=0,
+                    sources=[],
                 )
 
             except httpx.TimeoutException:
@@ -125,7 +215,10 @@ def bind(mcp: Any) -> None:
                 await ctx.error("SignNow API request timed out after retries")
                 return SignNowApiInfo(
                     query=query,
-                    content="Error: SignNow API request timed out. Try a more specific query.",
+                    content=("Error: SignNow API request timed out. Try a more specific query."),
+                    result_count=0,
+                    total_available=0,
+                    sources=[],
                 )
 
             except httpx.RequestError as exc:
@@ -134,10 +227,16 @@ def bind(mcp: Any) -> None:
                 return SignNowApiInfo(
                     query=query,
                     content=f"Error: Network error connecting to SignNow API — {exc}",
+                    result_count=0,
+                    total_available=0,
+                    sources=[],
                 )
 
         error_msg = str(last_error) if last_error else "Unknown error"
         return SignNowApiInfo(
             query=query,
-            content=f"Error: Failed after {_MAX_RETRIES + 1} attempts — {error_msg}",
+            content=(f"Error: Failed after {_MAX_RETRIES + 1} attempts — {error_msg}"),
+            result_count=0,
+            total_available=0,
+            sources=[],
         )

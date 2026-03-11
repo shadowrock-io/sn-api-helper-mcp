@@ -30,7 +30,7 @@
   "tools": [
     {
       "name": "get_signnow_api_info",
-      "description": "Query SignNow API documentation for endpoint details, parameters, code examples, and error handling guidance."
+      "description": "Get information about SignNow API. This is documentation for API usage."
     }
   ],
   "compatibility": {
