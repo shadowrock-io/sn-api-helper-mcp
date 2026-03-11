@@ -6,23 +6,27 @@ from typing import Any
 
 from mcp.types import Completion, PromptReference, ResourceTemplateReference
 
+# Query suggestions follow the pattern: {HTTP_METHOD} {resource} {action}
+# for endpoint specs, or {feature} guide for walkthroughs.
 _COMMON_QUERIES = [
-    "embedded signing",
-    "free form invite",
-    "OAuth2 authentication",
-    "document templates",
-    "webhook events",
-    "bulk send",
-    "document groups",
-    "field invite",
-    "prefill fields",
-    "download document",
-    "create document from template",
-    "signing link",
-    "role-based invite",
-    "text tags",
-    "branding",
+    "POST embedded signing invite",
+    "POST free form invite",
+    "PUT document fields add signature text",
+    "POST template bulkinvite",
+    "GET document download signed PDF",
+    "POST OAuth2 token endpoint password grant",
+    "POST webhook event subscription callback",
+    "POST create document from template",
+    "GET document fields list",
+    "POST role-based invite",
+    "POST prefill smart fields merge",
+    "POST document group invite",
+    "embedded signing setup guide",
+    "text tags guide",
+    "branding guide",
 ]
+
+_CONTENT_TYPE_VALUES = ["all", "api-spec", "guide", "integration"]
 
 _LANGUAGES = ["python", "node", "php", "java", "csharp", "ruby", "go"]
 
@@ -85,5 +89,8 @@ def register_completions(mcp: Any) -> None:
 
         if name == "max_results":
             return Completion(values=_filter_values(_MAX_RESULTS_VALUES, partial))
+
+        if name == "content_type":
+            return Completion(values=_filter_values(_CONTENT_TYPE_VALUES, partial))
 
         return None
