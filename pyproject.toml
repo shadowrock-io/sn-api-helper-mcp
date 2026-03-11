@@ -26,9 +26,6 @@ dev = [
   "ruff>=0.4.0",
 ]
 
-[project.scripts]
-sn-api-helper-mcp = "sn_api_helper_mcp.cli:main"
-
 [tool.hatch.build.targets.wheel]
 packages = ["src/sn_api_helper_mcp"]
 
